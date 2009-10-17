@@ -171,7 +171,8 @@ module RestrictedSubdomain
         
         def with_subdomain_scope(&block)
           if subdomain_klass.current
-            with_scope({ :find => { :conditions => ["#{table_name}.#{subdomain_symbol}_id = ?", subdomain_klass.current.id ] } }, :merge, &block)
+            subdomain_id = subdomain_klass.current[subdomain_klass.primary_key]
+            with_scope({ :find => { :conditions => ["#{table_name}.#{subdomain_symbol}_id = ?", subdomain_id ] } }, :merge, &block)
           else
             with_scope({}, :merge, &block)
           end 
