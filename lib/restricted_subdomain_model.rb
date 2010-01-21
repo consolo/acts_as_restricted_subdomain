@@ -44,6 +44,14 @@ module RestrictedSubdomain
             end
             self.current = old_current
           end
+
+          def self.current=(other)
+            if other.is_a?(String) or other.is_a?(Symbol)
+              @@current = self.send("find_by_#{options[:by]}", other)
+            else
+              @@current = other
+            end
+          end
         RUBY
       end
       
