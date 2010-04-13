@@ -83,8 +83,9 @@ module RestrictedSubdomain
       def current_subdomain
         if @_current_subdomain.nil?
           subname = request.host.split(/\./).first
-          @_current_subdomain = self.subdomain_klass.find :first,
+          @_current_subdomain = self.subdomain_klass.first(
             :conditions => { self.subdomain_column => subname }
+          )
           raise ActiveRecord::RecordNotFound if @_current_subdomain.nil?
           self.subdomain_klass.current = @_current_subdomain
         end
