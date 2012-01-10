@@ -90,7 +90,11 @@ class AgencyTest < ActsAsRestrictedSubdomainBaseTest
 end
 
 class ThingTest < ActsAsRestrictedSubdomainBaseTest
-
+  
+  def test_restricted_to_subdomain
+    assert_equal true, Thing.restricted_to_subdomain?
+  end
+  
   def test_unset_agency_count 
     Agency.current = nil   
     assert_equal 6, Thing.count
