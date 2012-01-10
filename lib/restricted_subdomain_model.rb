@@ -3,13 +3,6 @@ require 'active_record'
 module RestrictedSubdomain
   module Model
     ##
-    # Checks to see if the class has been restricted to a subdomain.
-    #
-    def restricted_to_subdomain?
-      self.included_modules.include?(InstanceMethods)
-    end
-    
-    ##
     # This method will mark a class as the subdomain model. It expects to
     # contain the subdomain in a column. You can override the default (:code)
     # by passing a :by parameter. That column will be validated for presence
@@ -57,8 +50,6 @@ module RestrictedSubdomain
           end
         end
       RUBY
-      include InstanceMethods
-      extend ClassMethods
     end
     
     ##
@@ -101,13 +92,18 @@ module RestrictedSubdomain
         end
         
         include InstanceMethods
-        extend ClassMethods
       end
+    end
+    
+    ##
+    # Checks to see if the class has been restricted to a subdomain.
+    #
+    def restricted_to_subdomain?
+      self.included_modules.include?(InstanceMethods)
     end
     
     module InstanceMethods
       private
-
       def set_restricted_subdomain_column
         self.send("#{subdomain_symbol}=", subdomain_klass.current)
         if self.send("#{subdomain_symbol}_id").nil?
@@ -116,67 +112,6 @@ module RestrictedSubdomain
         else
           true
         end
-      end
-    end
-      
-    module ClassMethods
-      def find_with_subdomain(*args)
-        options = extract_options_from_args!(args) rescue args.extract_options!
-        validate_find_options(options)
-        set_readonly_option!(options)
-        options[:with_subdomain] = true
-        
-        case args.first
-          when :first then find_initial(options)
-          when :all   then find_every(options)
-          else             find_from_ids(args, options)
-        end
-      end
-      
-      def construct_subdomain_options_from_legacy_args(*args)
-        options     = {}
-        column_name = :all
-        
-        # We need to handle
-        #   count()
-        #   count(options={})
-        #   count(column_name=:all, options={})
-        #   count(conditions=nil, joins=nil)      # deprecated
-        if args.size > 2
-          raise ArgumentError, "Unexpected parameters passed to count(options={}): #{args.inspect}"
-        elsif args.size > 0
-          if args[0].is_a?(Hash)
-            options = args[0]
-          elsif args[1].is_a?(Hash)
-            column_name, options = args
-          elsif args[0] == :all
-            options = args[1] if args[1]
-          else  
-            options.merge!(:conditions => args[0])
-            options.merge!(:joins      => args[1]) if args[1]
-          end
-        end
-        
-        [column_name, options]
-      end
-      
-      protected
-      
-      def with_subdomain_scope(&block)
-        if subdomain_klass.current
-          subdomain_id = subdomain_klass.current[subdomain_klass.primary_key]
-          with_scope({ :find => { :conditions => ["#{table_name}.#{subdomain_symbol}_id = ?", subdomain_id ] } }, :merge, &block)
-        else
-          with_scope({}, :merge, &block)
-        end 
-      end
-      
-      private
-      
-      def find_every(options)
-        options.delete(:with_subdomain) ?
-          find_every_with_subdomain(options) :
-          with_subdomain_scope { find_every_with_subdomain(options) }
       end
     end
   end
