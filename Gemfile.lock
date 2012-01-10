@@ -2,9 +2,9 @@ PATH
   remote: .
   specs:
     acts_as_restricted_subdomain (3.0.0)
-      actionpack (~> 3.0)
-      activerecord (~> 3.0)
-      activesupport (~> 3.0)
+      actionpack (~> 3.1)
+      activerecord (~> 3.1)
+      activesupport (~> 3.1)
 
 GEM
   remote: http://rubygems.org/
@@ -59,8 +59,9 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  actionpack (~> 3.0)
-  activerecord (~> 3.0)
+  actionpack (~> 3.1)
+  activerecord (~> 3.1)
+  activesupport (~> 3.1)
   acts_as_restricted_subdomain!
   rake
   sqlite3-ruby
