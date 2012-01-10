@@ -10,6 +10,5 @@ Gem::Specification.new do |s|
   s.require_path  = 'lib'
     
   s.add_dependency "activerecord",   "~> 3.1"
-  s.add_dependency "activesupport",  "~> 3.1"
   s.add_dependency "actionpack",     "~> 3.1"
 end
