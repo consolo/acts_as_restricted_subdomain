@@ -1,3 +1,5 @@
+require 'action_controller'
+
 module RestrictedSubdomain
   module Controller
     def self.included(base)
