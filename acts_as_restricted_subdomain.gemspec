@@ -7,7 +7,7 @@ Gem::Specification.new do |s|
   s.description   = 'Instead of destroying active record objects, mark a column as deleted with a timestamp'
   s.homepage      = 'https://redmine.consoloservices.com'
   s.require_path  = '.'
-  s.files         = Dir["{lib}/*.rb", "LICENSE", "README"]
-
+  s.files         = `git ls-files`.split("\n")
+  
   s.add_dependency 'activerecord', '~> 3.0'  
 end
