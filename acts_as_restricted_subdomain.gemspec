@@ -9,6 +9,6 @@ Gem::Specification.new do |s|
   s.files         = `git ls-files`.split("\n")
   
   s.add_dependency 'activerecord', '~> 3.0'
-  s.add_dependency "activesupport", "~>3.0"
+  s.add_dependency "activesupport", "~> 3.0"
   s.add_dependency 'actionpack', '~> 3.0'  
 end
