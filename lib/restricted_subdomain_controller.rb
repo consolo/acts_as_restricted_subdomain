@@ -133,3 +133,5 @@ module RestrictedSubdomain
     end
   end
 end
+
+ActionController::Base.send :include, RestrictedSubdomain::Controller
