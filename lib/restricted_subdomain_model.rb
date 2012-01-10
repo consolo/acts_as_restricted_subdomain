@@ -182,4 +182,4 @@ module RestrictedSubdomain
   end
 end
 
-ActiveRecord::Base.send :include, RestrictedSubdomain::Model
+ActiveRecord::Base.send :extend, RestrictedSubdomain::Model

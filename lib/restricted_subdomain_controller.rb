@@ -136,4 +136,4 @@ module RestrictedSubdomain
   end
 end
 
-ActionController::Base.send :include, RestrictedSubdomain::Controller
+ActionController::Base.send :extend, RestrictedSubdomain::Controller

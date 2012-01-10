@@ -1,19 +1,20 @@
 require 'rubygems'
 require 'test/unit'
 require 'active_record'
+require "active_support"
 require 'active_model'
 
 $:.unshift "#{File.dirname(__FILE__)}/../"
 $:.unshift "#{File.dirname(__FILE__)}/../lib/"
 
-require 'init'
+require 'restricted_subdomain_controller'
+require 'restricted_subdomain_model'
 
 ActiveRecord::Base.establish_connection(:adapter => "sqlite3", :database => ":memory:")
 
 def setup_db
   ActiveRecord::Schema.define(:version => 1) do
     create_table :agencies do |t|
-      t.string :name
       t.string :code
       t.timestamps
     end
@@ -41,7 +42,7 @@ end
 
 
 class Thing < ActiveRecord::Base
-  acts_as_restricted_subdomains
+  acts_as_restricted_subdomain
 end
 
 
@@ -56,17 +57,24 @@ class ActsAsRestrictedSubdomainBaseTest < ActiveSupport::TestCase
   
   def setup
     setup_db
-
-    ["agency_1", "agency_2", "agency_3"].each do |code|
-      Agency.create! :code => code
-    end
-
-    Thing.create! :agency_1
-    Thing.create! :agency_2
-    Thing.create! :agency_2
-    Thing.create! :agency_3
-    Thing.create! :agency_3
-    Thing.create! :agency_3
+      
+    agency_1 = Agency.create! :code => "agency_1"
+    agency_2 = Agency.create! :code => "agency_2"
+    agency_3 = Agency.create! :code => "agency_3"
+      
+    Agency.current = "agency_1"  
+    Thing.create!
+    
+    Agency.current = "agency_2"
+    Thing.create!
+    Thing.create!
+    
+    Agency.current = "agency_3"
+    Thing.create!
+    Thing.create!
+    Thing.create!
+    
+    Agency.current = nil
   end
 
   def teardown
@@ -77,17 +85,24 @@ end
 class AgencyTest < ActsAsRestrictedSubdomainBaseTest
   def test_agency_current
     Agency.current = "agency_1"
-    assert_equal Agency.current, "agency_1"
+    assert_equal Agency.current.code, "agency_1"
   end
 end
 
 class ThingTest < ActsAsRestrictedSubdomainBaseTest
 
-  def test_real_removal    
+  def test_unset_agency_count 
+    Agency.current = nil   
     assert_equal 6, Thing.count
-    
+  end
+  
+  def test_set_agency_count
     Agency.current = "agency_3"
     assert_equal 3, Thing.count
-    assert_equal Agency.current.id, Agency.all.collect(&:agency_id).uniq
+  end
+  
+  def test_set_agency_find_all
+    Agency.current = "agency_3"
+    assert_equal [Agency.current.id], Thing.all.collect(&:agency_id).uniq
   end
 end
