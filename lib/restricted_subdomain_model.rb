@@ -88,7 +88,7 @@ module RestrictedSubdomain
         before_create :set_restricted_subdomain_column
         
         self.class_eval do 
-          default_scope Proc.new { self.subdomain_klass.current ? where("#{self.subdomain_symbol}_id" => self.subdomain_klass.current.id ) : nil }
+          default_scope { self.subdomain_klass.current ? where("#{self.subdomain_symbol}_id" => self.subdomain_klass.current.id ) : nil }
         end
         
         include InstanceMethods
