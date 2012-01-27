@@ -83,6 +83,7 @@ module RestrictedSubdomain
         self.subdomain_symbol = options[:through]
         self.subdomain_klass = options[:through].to_s.camelize.constantize
         belongs_to options[:through]
+        validates_presence_of options[:through]        
         before_create :set_restricted_subdomain_column
         
         self.class_eval do 
