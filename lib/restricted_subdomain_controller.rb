@@ -124,6 +124,17 @@ module RestrictedSubdomain
           request.session = args
         end
       end
+
+      ##
+      # Overwrite the default method so that session data from *other*
+      # subdomains is kept.
+      #
+      def reset_session
+        copy = lambda { |sess, (key, val)| sess[key] = val unless key == current_subdomain_symbol; sess }
+        new_session = request.session.inject({}, &copy)
+        super
+        new_session.inject(request.session, &copy)
+      end
     end
   end
 end
