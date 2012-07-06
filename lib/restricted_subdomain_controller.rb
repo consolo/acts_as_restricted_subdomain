@@ -103,10 +103,13 @@ module RestrictedSubdomain
       # a subhash keyed on the restricted subdomain symbol. Only works if
       # the current subdomain is found, gracefully degrades if missing.
       #
-      def session
-        if((current_subdomain rescue nil))
-          request.session[current_subdomain_symbol] ||= {}
-          request.session[current_subdomain_symbol]
+      # Optionall, a specific subdomain may be passed. This allows users from
+      # all subdomains to be signed in from a single "global" subdomain.
+      #
+      def session(subdomain_symbol = nil)
+        if((subdomain_symbol ||= current_subdomain_symbol rescue nil))
+          request.session[subdomain_symbol] ||= {}
+          request.session[subdomain_symbol]
         else
           request.session
         end
@@ -130,10 +133,10 @@ module RestrictedSubdomain
       # subdomains is kept.
       #
       def reset_session
-        copy = lambda { |sess, (key, val)| sess[key] = val unless key == current_subdomain_symbol; sess }
-        new_session = request.session.inject({}, &copy)
+        copier = lambda { |sess, (key, val)| sess[key] = val unless key == current_subdomain_symbol; sess }
+        new_session = request.session.inject({}, &copier)
         super
-        new_session.inject(request.session, &copy)
+        new_session.inject(request.session, &copier)
       end
     end
   end
