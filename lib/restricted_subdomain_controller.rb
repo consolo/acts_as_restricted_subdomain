@@ -99,27 +99,28 @@ module RestrictedSubdomain
       end
     
       ##
-      # Overwrite the default accessor that will force all session access to
-      # a subhash keyed on the restricted subdomain symbol. Only works if
-      # the current subdomain is found, gracefully degrades if missing.
+      # A session store for data that is specific to a subdomain.
+      # Only works if the current subdomain is found, gracefully degrades if missing.
       #
-      def session
+      def subdomain_session
         if((current_subdomain rescue nil))
-          request.session[current_subdomain_symbol] ||= {}
-          request.session[current_subdomain_symbol]
+          request.session['_subdomains'] ||= {}
+          request.session['_subdomains'][current_subdomain_symbol] ||= {}
+          request.session['_subdomains'][current_subdomain_symbol]
         else
           request.session
         end
       end
     
       ##
-      # Forces all session assignments to a subhash keyed on the current
-      # subdomain symbol, if found. Otherwise works just like normal.
+      # Allows you to set the current subdomain's sub-session hash, if found.
+      # Degrades to the full session if missing.
       #
-      def session=(*args)
+      def subdomain_session=(*args)
         if((current_subdomain rescue nil))
-          request.session[current_subdomain_symbol] ||= {}
-          request.session[current_subdomain_symbol] = args
+          request.session['_subdomains'] ||= {}
+          request.session['_subdomains'][current_subdomain_symbol] ||= {}
+          request.session['_subdomains'][current_subdomain_symbol] = args
         else
           request.session = args
         end
