@@ -112,7 +112,7 @@ module RestrictedSubdomain
             if self.subdomain_klass.current
               # Using straight sql so we can JOIN against two columns. Otherwise one must go into "WHERE", and Arel would mistakenly apply it to UPDATEs and DELETEs.
               delegate_foreign_key = self.reflections[self.subdomain_symbol_delegate].foreign_key
-              join_args = {delegate_table: self.subdomain_klass_delegate.table_name, delegate_key: delegate_foreign_key, table_name: self.table_name, subdomain_key: "#{self.subdomain_symbol}_id", subdomain_id: self.subdomain_klass.current.id.to_i}
+              join_args = {:delegate_table => self.subdomain_klass_delegate.table_name, :delegate_key => delegate_foreign_key, :table_name => self.table_name, :subdomain_key => "#{self.subdomain_symbol}_id", :subdomain_id => self.subdomain_klass.current.id.to_i}
               # Using "joins" makes records readonly, which we don't want
               with_scope :find => {:readonly => false} do
                 joins("INNER JOIN %{delegate_table} ON %{delegate_table}.%{delegate_key} = %{table_name}.id AND %{delegate_table}.%{subdomain_key} = %{subdomain_id}" % join_args)
