@@ -108,7 +108,14 @@ module RestrictedSubdomain
           self.subdomain_symbol_delegate = options[:delegate]
           self.subdomain_klass_delegate = options[:delegate].to_s.singularize.camelize.constantize
           
-          default_scope { self.subdomain_klass.current ? joins(self.subdomain_symbol_delegate).where("#{self.subdomain_klass_delegate.table_name}.#{self.subdomain_symbol}_id = ?", self.subdomain_klass.current.id) : nil }
+          default_scope do
+            if self.subdomain_klass.current
+              # Using straight sql so we can JOIN against two columns. Otherwise one must go into "WHERE", and Arel would mistakenly apply it to UPDATEs and DELETEs.
+              delegate_foreign_key = self.reflections[self.subdomain_symbol_delegate].foreign_key
+              join_args = {delegate_table: self.subdomain_klass_delegate.table_name, delegate_key: delegate_foreign_key, table_name: self.table_name, subdomain_key: "#{self.subdomain_symbol}_id", subdomain_id: self.subdomain_klass.current.id.to_i}
+              joins("INNER JOIN %{delegate_table} ON %{delegate_table}.%{delegate_key} = %{table_name}.id AND %{delegate_table}.%{subdomain_key} = %{subdomain_id}" % join_args)
+            end
+          end
         
         # This *is* the restricted model and should always include the id in queries
         else
