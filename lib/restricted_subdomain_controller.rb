@@ -63,7 +63,7 @@ module RestrictedSubdomain
       cattr_accessor :subdomain_klass, :subdomain_column
       self.subdomain_klass = options[:through].constantize
       self.subdomain_column = options[:by]
-      helper_method :current_subdomain
+      helper_method :current_subdomain, :subdomain_session, :subdomain_session=
       
       include InstanceMethods
     end
