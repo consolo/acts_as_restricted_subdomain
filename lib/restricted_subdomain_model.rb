@@ -39,6 +39,13 @@ module RestrictedSubdomain
           end
           self.current = old_current
         end
+
+        def self.sans_subdomain
+          old_current = self.current
+          self.current = nil
+          yield if block_given?
+          self.current = old_current
+        end
         
         def self.current=(other)
           if other.is_a?(String) or other.is_a?(Symbol)
