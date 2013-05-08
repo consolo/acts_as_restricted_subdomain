@@ -40,11 +40,12 @@ module RestrictedSubdomain
           self.current = old_current
         end
 
-        def self.sans_subdomain
+        def self.sans_subdomain(&blk)
           old_current = self.current
           self.current = nil
-          yield if block_given?
+          result = blk.call
           self.current = old_current
+          result
         end
         
         def self.current=(other)
