@@ -39,8 +39,16 @@ module RestrictedSubdomain
           end
           self.current = old_current
         end
-
-        def self.sans_subdomain(&blk)
+        
+        def self.with_subdomain(subdomain, &blk)
+          old_current = self.current
+          self.current = subdomain
+          result = blk.call
+          self.current = old_current
+          result
+        end
+        
+        def self.without_subdomain(&blk)
           old_current = self.current
           self.current = nil
           result = blk.call
