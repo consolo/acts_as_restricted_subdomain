@@ -40,6 +40,22 @@ module RestrictedSubdomain
           self.current = old_current
         end
         
+        def self.with_subdomain(subdomain, &blk)
+          old_current = self.current
+          self.current = subdomain
+          result = blk.call
+          self.current = old_current
+          result
+        end
+        
+        def self.without_subdomain(&blk)
+          old_current = self.current
+          self.current = nil
+          result = blk.call
+          self.current = old_current
+          result
+        end
+        
         def self.current=(other)
           if other.is_a?(String) or other.is_a?(Symbol)
             @@current = self.send("find_by_#{options[:by]}", other)
@@ -62,6 +78,12 @@ module RestrictedSubdomain
     # This does not add any has_many associations in your subdomain class.
     # That is an exercise left to the user, sorry. Also beware of
     # validates_uniqueness_of. It should be scoped to the foreign key.
+    # 
+    # If you pass an assocation symbol through the :delegate option, the subdomain
+    # association will be delegated through that assocation instead of being linked
+    # directly. (It is assumed that the delegate is restricted to the subdomain.) 
+    # The result is that model lookups will always be inner-joined to the delegate,
+    # ensuring that the model is indirectly restricted.
     #
     # Example:
     #   
@@ -73,6 +95,19 @@ module RestrictedSubdomain
     #     use_for_restricted_subdomains :by => :name
     #   end
     #
+    # Delegate Example: A User is "global" and is linked to one or more subdomains through
+    # UserCredential. Even though the User is technically global, it will only be visible to the 
+    # associated subdomains.
+    #
+    # class User < ActiveRecord::Base
+    #   acts_as_restricted_subdomain :through => :subdomain, :delegate => :user_credentials
+    #   has_many :user_credentials
+    # end
+    #
+    # class UserCredential < ActiveRecord::Base
+    #   acts_as_restricted_subdomain :through => :subdomain
+    # end
+    #
     # Special thanks to the Caboosers who created acts_as_paranoid. This is
     # pretty much the same thing, only without the delete_all bits.
     #
@@ -82,15 +117,37 @@ module RestrictedSubdomain
         cattr_accessor :subdomain_symbol, :subdomain_klass
         self.subdomain_symbol = options[:through]
         self.subdomain_klass = options[:through].to_s.camelize.constantize
-        belongs_to options[:through]
-        validates_presence_of options[:through]        
-        before_create :set_restricted_subdomain_column
         
-        self.class_eval do 
-          default_scope { self.subdomain_klass.current ? where("#{self.subdomain_symbol}_id" => self.subdomain_klass.current.id ) : nil }
+        # This *isn't* the restricted model, but it should always join against a delegate association
+        if options[:delegate]
+          cattr_accessor :subdomain_symbol_delegate, :subdomain_klass_delegate
+          self.subdomain_symbol_delegate = options[:delegate]
+          self.subdomain_klass_delegate = options[:delegate].to_s.singularize.camelize.constantize
+          
+          default_scope do
+            if self.subdomain_klass.current
+              # Using straight sql so we can JOIN against two columns. Otherwise one must go into "WHERE", and Arel would mistakenly apply it to UPDATEs and DELETEs.
+              delegate_foreign_key = self.reflections[self.subdomain_symbol_delegate].foreign_key
+              join_args = {:delegate_table => self.subdomain_klass_delegate.table_name, :delegate_key => delegate_foreign_key, :table_name => self.table_name, :subdomain_key => "#{self.subdomain_symbol}_id", :subdomain_id => self.subdomain_klass.current.id.to_i}
+              # Using "joins" makes records readonly, which we don't want
+              with_scope :find => {:readonly => false} do
+                joins("INNER JOIN %{delegate_table} ON %{delegate_table}.%{delegate_key} = %{table_name}.id AND %{delegate_table}.%{subdomain_key} = %{subdomain_id}" % join_args)
+              end
+            end
+          end
+        
+        # This *is* the restricted model and should always include the id in queries
+        else
+          belongs_to options[:through]
+          validates_presence_of options[:through]        
+          before_create :set_restricted_subdomain_column
+          
+          self.class_eval do 
+            default_scope { self.subdomain_klass.current ? where("#{self.subdomain_symbol}_id" => self.subdomain_klass.current.id ) : nil }
+          end
+          
+          include InstanceMethods
         end
-        
-        include InstanceMethods
       end
     end
     
@@ -98,7 +155,7 @@ module RestrictedSubdomain
     # Checks to see if the class has been restricted to a subdomain.
     #
     def restricted_to_subdomain?
-      self.included_modules.include?(InstanceMethods)
+      self.respond_to?(:subdomain_symbol) && self.respond_to?(:subdomain_klass)
     end
     
     module InstanceMethods
