@@ -59,31 +59,38 @@ module RestrictedSubdomain
         :by => :code
       }.merge(opts)
       
-      append_before_filter :current_subdomain
+      respond_to?(:prepend_around_action) ? prepend_around_action(:within_request_subdomain) : prepend_around_filter(:within_request_subdomain)
+      
       cattr_accessor :subdomain_klass, :subdomain_column
       self.subdomain_klass = options[:through].constantize
       self.subdomain_column = options[:by]
-      helper_method :current_subdomain, :subdomain_session, :subdomain_session=
+      helper_method :current_subdomain
       
       include InstanceMethods
     end
   
     module InstanceMethods
       ##
-      # Returns the current subdomain model. Inspects request.host to figure out
+      # Sets the current subdomain model. Inspects request.host to figure out
       # the subdomain by splitting on periods and using the first entry. This
       # implies that the subdomain should *never* have a period in the name.
       #
-      def current_subdomain
-        if @_current_subdomain.nil?
-          subname = request.host.split(/\./).first
-          @_current_subdomain = self.subdomain_klass.first(
-            :conditions => { self.subdomain_column => subname }
-          )
-          raise ActiveRecord::RecordNotFound if @_current_subdomain.nil?
-          self.subdomain_klass.current = @_current_subdomain
+      def within_request_subdomain
+        self.subdomain_klass.current = request.host.split(/\./).first
+        raise ActiveRecord::RecordNotFound if self.subdomain_klass.current.nil?
+        begin
+          yield if block_given?
+        ensure
+          self.subdomain_klass.current = nil
         end
-        @_current_subdomain
+      end
+
+      ##
+      # Returns the current subdomain model, or nil if none.
+      # It respects Agency.each_subdomain, Agency.with_subdomain and Agency.without_subdomain.
+      #
+      def current_subdomain
+        self.subdomain_klass.current
       end
     
       ##
@@ -99,30 +106,16 @@ module RestrictedSubdomain
       end
     
       ##
-      # A session store for data that is specific to a subdomain.
-      # Only works if the current subdomain is found, gracefully degrades if missing.
+      # Overwrite the default accessor that will force all session access to
+      # a subhash keyed on the restricted subdomain symbol. Only works if
+      # the current subdomain is found, gracefully degrades if missing. 
       #
-      def subdomain_session
-        if((current_subdomain rescue nil))
-          request.session['_subdomains'] ||= {}
-          request.session['_subdomains'][current_subdomain_symbol] ||= {}
-          request.session['_subdomains'][current_subdomain_symbol]
+      def session
+        if current_subdomain
+          request.session[current_subdomain_symbol] ||= {}
+          request.session[current_subdomain_symbol] 
         else
           request.session
-        end
-      end
-    
-      ##
-      # Allows you to set the current subdomain's sub-session hash, if found.
-      # Degrades to the full session if missing.
-      #
-      def subdomain_session=(*args)
-        if((current_subdomain rescue nil))
-          request.session['_subdomains'] ||= {}
-          request.session['_subdomains'][current_subdomain_symbol] ||= {}
-          request.session['_subdomains'][current_subdomain_symbol] = args
-        else
-          request.session = args
         end
       end
     end
