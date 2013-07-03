@@ -71,12 +71,10 @@ module RestrictedSubdomain
   
     module InstanceMethods
       ##
-      # Sets the current subdomain model. Inspects request.host to figure out
-      # the subdomain by splitting on periods and using the first entry. This
-      # implies that the subdomain should *never* have a period in the name.
+      # Sets the current subdomain model to the subdomain specified by #request_subdomain.
       #
       def within_request_subdomain
-        self.subdomain_klass.current = request.host.split(/\./).first
+        self.subdomain_klass.current = request_subdomain
         raise ActiveRecord::RecordNotFound if self.subdomain_klass.current.nil?
         begin
           yield if block_given?
@@ -107,8 +105,8 @@ module RestrictedSubdomain
     
       ##
       # Overwrite the default accessor that will force all session access to
-      # a subhash keyed on the restricted subdomain symbol. Only works if
-      # the current subdomain is found, gracefully degrades if missing. 
+      # a subhash keyed on the restricted subdomain symbol. If the current 
+      # current subdomain is not set, it gracefully degrades to the normal session.
       #
       def session
         if current_subdomain
@@ -117,6 +115,17 @@ module RestrictedSubdomain
         else
           request.session
         end
+      end
+
+      ##
+      # Returns the subdomain from the current request. Inspects request.host to figure out
+      # the subdomain by splitting on periods and using the first entry. This
+      # implies that the subdomain should *never* have a period in the name.
+      #
+      # It can be useful to override this for testing with Capybara et all.
+      #
+      def request_subdomain
+        request.host.split(/\./).first
       end
     end
   end
