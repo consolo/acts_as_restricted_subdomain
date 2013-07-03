@@ -59,7 +59,8 @@ module RestrictedSubdomain
         :by => :code
       }.merge(opts)
       
-      append_before_filter :current_subdomain
+      respond_to?(:prepend_around_action) ? prepend_around_action(:within_request_subdomain) : prepend_around_filter(:within_request_subdomain)
+      
       cattr_accessor :subdomain_klass, :subdomain_column
       self.subdomain_klass = options[:through].constantize
       self.subdomain_column = options[:by]
@@ -70,20 +71,24 @@ module RestrictedSubdomain
   
     module InstanceMethods
       ##
-      # Returns the current subdomain model. Inspects request.host to figure out
-      # the subdomain by splitting on periods and using the first entry. This
-      # implies that the subdomain should *never* have a period in the name.
+      # Sets the current subdomain model to the subdomain specified by #request_subdomain.
+      #
+      def within_request_subdomain
+        self.subdomain_klass.current = request_subdomain
+        raise ActiveRecord::RecordNotFound if self.subdomain_klass.current.nil?
+        begin
+          yield if block_given?
+        ensure
+          self.subdomain_klass.current = nil
+        end
+      end
+
+      ##
+      # Returns the current subdomain model, or nil if none.
+      # It respects Agency.each_subdomain, Agency.with_subdomain and Agency.without_subdomain.
       #
       def current_subdomain
-        if @_current_subdomain.nil?
-          subname = request.host.split(/\./).first
-          @_current_subdomain = self.subdomain_klass.first(
-            :conditions => { self.subdomain_column => subname }
-          )
-          raise ActiveRecord::RecordNotFound if @_current_subdomain.nil?
-          self.subdomain_klass.current = @_current_subdomain
-        end
-        @_current_subdomain
+        self.subdomain_klass.current
       end
     
       ##
@@ -100,27 +105,24 @@ module RestrictedSubdomain
     
       ##
       # Overwrite the default accessor that will force all session access to
-      # a subhash keyed on the restricted subdomain symbol. Only works if
-      # the current subdomain is found, gracefully degrades if missing.
+      # a subhash keyed on the restricted subdomain symbol. If the current 
+      # current subdomain is not set, it gracefully degrades to the normal session.
       #
-      # Optionall, a specific subdomain may be passed. This allows users from
-      # all subdomains to be signed in from a single "global" subdomain.
-      #
-      def session(subdomain_symbol = nil)
-        if((subdomain_symbol ||= current_subdomain_symbol rescue nil))
-          request.session[subdomain_symbol] ||= {}
-          request.session[subdomain_symbol]
+      def session
+        if current_subdomain
+          request.session[current_subdomain_symbol] ||= {}
+          request.session[current_subdomain_symbol] 
         else
           request.session
         end
       end
-    
+
       ##
       # Forces all session assignments to a subhash keyed on the current
       # subdomain symbol, if found. Otherwise works just like normal.
       #
       def session=(*args)
-        if((current_subdomain rescue nil))
+        if current_subdomain
           request.session[current_subdomain_symbol] ||= {}
           request.session[current_subdomain_symbol] = args
         else
@@ -133,10 +135,24 @@ module RestrictedSubdomain
       # subdomains is kept.
       #
       def reset_session
-        copier = lambda { |sess, (key, val)| sess[key] = val unless key == current_subdomain_symbol; sess }
-        new_session = request.session.inject({}, &copier)
-        super
-        new_session.inject(request.session, &copier)
+        if current_subdomain
+          copier = lambda { |sess, (key, val)| sess[key] = val unless key == current_subdomain_symbol; sess }
+          new_session = request.session.inject({}, &copier)
+          super
+          new_session.inject(request.session, &copier)
+        else
+          super
+        end
+      end
+
+      # Returns the subdomain from the current request. Inspects request.host to figure out
+      # the subdomain by splitting on periods and using the first entry. This
+      # implies that the subdomain should *never* have a period in the name.
+      #
+      # It can be useful to override this for testing with Capybara et all.
+      #
+      def request_subdomain
+        request.host.split(/\./).first
       end
     end
   end
