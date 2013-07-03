@@ -118,6 +118,19 @@ module RestrictedSubdomain
       end
 
       ##
+      # Forces all session assignments to a subhash keyed on the current
+      # subdomain symbol, if found. Otherwise works just like normal.
+      #
+      def session=(*args)
+        if current_subdomain
+          request.session[current_subdomain_symbol] ||= {}
+          request.session[current_subdomain_symbol] = args
+        else
+          request.session = args
+        end
+      end
+
+      ##
       # Returns the subdomain from the current request. Inspects request.host to figure out
       # the subdomain by splitting on periods and using the first entry. This
       # implies that the subdomain should *never* have a period in the name.
