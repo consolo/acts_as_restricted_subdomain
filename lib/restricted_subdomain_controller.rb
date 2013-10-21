@@ -16,6 +16,11 @@ module RestrictedSubdomain
     # should be the column name of the field containing the subdomain
     # (defaults to :code).
     #
+    # Optional argument :global. This is a subdomain (or array) that should not
+    # perform a subdomain lookup. Instead, the current subdomain will be left blank
+    # and your application code will run "globally", with access to all agencies.
+    # E.g. a login portal.
+    #
     # == Working Example
     #
     # For example, the usage of Agency and :code will work out thusly:
@@ -26,7 +31,7 @@ module RestrictedSubdomain
     # 1. Request hits http://secksi.example.com/login
     # 2. Subdomain becomes 'secksi'
     # 3. The corresponding 'Agency' with a ':code' of 'secksi' becomes the
-    #    current subdomain. If it's not found, an ActiveRecord::RecordNotFound
+    #    current subdomain. If it's not found, an RestrictedSubdomain::SubdomainNotFound
     #    is thrown to automatically raise a 404 not found.
     #
     # == account_location
@@ -56,14 +61,16 @@ module RestrictedSubdomain
     def use_restricted_subdomains(opts = {})
       options = {
         :through => 'Agency',
-        :by => :code
+        :by => :code,
+        :global => [],
       }.merge(opts)
       
       respond_to?(:prepend_around_action) ? prepend_around_action(:within_request_subdomain) : prepend_around_filter(:within_request_subdomain)
       
-      cattr_accessor :subdomain_klass, :subdomain_column
+      cattr_accessor :subdomain_klass, :subdomain_column, :global_subdomains
       self.subdomain_klass = options[:through].constantize
       self.subdomain_column = options[:by]
+      self.global_subdomains = options[:global].is_a?(Array) ? options[:global] : [options[:global]]
       helper_method :current_subdomain
       
       include InstanceMethods
@@ -74,13 +81,13 @@ module RestrictedSubdomain
       # Sets the current subdomain model to the subdomain specified by #request_subdomain.
       #
       def within_request_subdomain
-        self.subdomain_klass.current = request_subdomain
-        raise ActiveRecord::RecordNotFound if self.subdomain_klass.current.nil?
-        begin
+        if self.global_subdomains.include?(request_subdomain) or (self.subdomain_klass.current = request_subdomain)
           yield if block_given?
-        ensure
-          self.subdomain_klass.current = nil
+        else
+          raise RestrictedSubdomain::SubdomainNotFound
         end
+      ensure
+        self.subdomain_klass.current = nil
       end
 
       ##
@@ -142,6 +149,8 @@ module RestrictedSubdomain
       end
     end
   end
+
+  SubdomainNotFound = Class.new(ActiveRecord::RecordNotFound)
 end
 
 ActionController::Base.send :extend, RestrictedSubdomain::Controller
