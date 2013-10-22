@@ -91,6 +91,22 @@ module RestrictedSubdomain
       end
 
       ##
+      # Use as a before_filter to make sure there's a current_subdomain.
+      # Useful if you're using global subdomains - e.g. a certain controller shouldn't be accessible from a global subdomain.
+      #
+      def require_subdomain
+        raise RestrictedSubdomain::SubdomainNotFound if current_subdomain.nil?
+      end
+
+      ##
+      # Use as a before_filter to make sure there ISN'T a current_subdomain.
+      # Useful if you're using global subdomains - e.g. a certain controller shouldn ONLY be accessible from a global subdomain.
+      #
+      def require_no_subdomain
+        raise RestrictedSubdomain::SubdomainNotFound if current_subdomain
+      end
+
+      ##
       # Returns the current subdomain model, or nil if none.
       # It respects Agency.each_subdomain, Agency.with_subdomain and Agency.without_subdomain.
       #
