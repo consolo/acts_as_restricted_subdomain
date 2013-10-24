@@ -27,13 +27,23 @@ module RestrictedSubdomain
       
       validates_presence_of options[:by]
       validates_uniqueness_of options[:by]
-      cattr_accessor :current
       
       self.class_eval <<-RUBY
+        def self.current
+          Thread.current['current_subdomain']
+        end
+        
+        def self.current=(other)
+          if other.is_a?(String) or other.is_a?(Symbol)
+            Thread.current['current_subdomain'] = self.send("find_by_#{options[:by]}", other)
+          else
+            Thread.current['current_subdomain'] = other
+          end
+        end
+
         def self.each_subdomain(&blk)
           old_current = self.current
-          @_current_subdomains ||= self.find(:all)
-          @_current_subdomains.each do |subdomain|
+          self.find(:all).each do |subdomain|
             self.current = subdomain
             yield blk
           end
@@ -54,14 +64,6 @@ module RestrictedSubdomain
           result = blk.call
           self.current = old_current
           result
-        end
-        
-        def self.current=(other)
-          if other.is_a?(String) or other.is_a?(Symbol)
-            @@current = self.send("find_by_#{options[:by]}", other)
-          else
-            @@current = other
-          end
         end
       RUBY
     end

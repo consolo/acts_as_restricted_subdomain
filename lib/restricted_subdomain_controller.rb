@@ -154,6 +154,20 @@ module RestrictedSubdomain
       end
 
       ##
+      # Overwrite the default method so that session data from *other*
+      # subdomains is kept.
+      #
+      def reset_session
+        if current_subdomain
+          copier = lambda { |sess, (key, val)| sess[key] = val unless key == current_subdomain_symbol; sess }
+          new_session = request.session.inject({}, &copier)
+          super
+          new_session.inject(request.session, &copier)
+        else
+          super
+        end
+      end
+
       # Returns the subdomain from the current request. Inspects request.host to figure out
       # the subdomain by splitting on periods and using the first entry. This
       # implies that the subdomain should *never* have a period in the name.
