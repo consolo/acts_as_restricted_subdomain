@@ -68,7 +68,7 @@ module RestrictedSubdomain
       respond_to?(:prepend_around_action) ? prepend_around_action(:within_request_subdomain) : prepend_around_filter(:within_request_subdomain)
       
       cattr_accessor :subdomain_klass, :subdomain_column, :global_subdomains
-      self.subdomain_klass = options[:through].constantize
+      self.subdomain_klass = options[:through].respond_to?(:constantize) ? options[:through].constantize : options[:through]
       self.subdomain_column = options[:by]
       self.global_subdomains = options[:global].is_a?(Array) ? options[:global] : [options[:global]]
       helper_method :current_subdomain
