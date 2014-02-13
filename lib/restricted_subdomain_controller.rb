@@ -81,7 +81,7 @@ module RestrictedSubdomain
       # Sets the current subdomain model to the subdomain specified by #request_subdomain.
       #
       def within_request_subdomain
-        if self.global_subdomains.include?(request_subdomain) or (self.subdomain_klass.current = request_subdomain)
+        if self.global_subdomains.include?(request_subdomain) or (self.subdomain_klass.current = self.subdomain_klass.where({ self.subdomain_column => request_subdomain }).first)
           yield if block_given?
         else
           raise RestrictedSubdomain::SubdomainNotFound
