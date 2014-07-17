@@ -12,15 +12,7 @@ module RestrictedSubdomain
     # == Usage
     #
     # 1. Add the RestrictedSubdomain::Middleware middleware to your app.
-    # Takes two arguments: :through and :by. :through should be a class,
-    # class name, or proc that returns the class of the model used to represent
-    # the subdomain (defaults to Agency). :by should be the column name
-    # of the field containing the subdomain (defaults to :code).
-    #
-    # Optional argument :global. This is a subdomain (or array) that should not
-    # perform a subdomain lookup. Instead, the current subdomain will be left blank
-    # and your application code will run "globally", with access to all agencies.
-    # E.g. a login portal.
+    # See documentation for RestrictedSubdomain::Middleware.
     #
     # 2. Call use_restricted_subdomains in your ApplicationController.
     #
