@@ -9,6 +9,6 @@ Gem::Specification.new do |s|
   s.files         = `git ls-files`.split("\n")
   s.require_path  = 'lib'
     
-  s.add_dependency "activerecord",   "~> 3.1"
-  s.add_dependency "actionpack",     "~> 3.1"
+  s.add_dependency "activerecord"
+  s.add_dependency "actionpack"
 end
