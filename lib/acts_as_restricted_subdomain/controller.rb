@@ -60,8 +60,12 @@ module RestrictedSubdomain
       cattr_accessor :subdomain_klass, :subdomain_column
 
       if middleware = Rails.configuration.middleware.detect { |m| m === RestrictedSubdomain::Middleware }.try(:build, nil)
-        self.subdomain_klass = middleware.subdomain_klass
-        self.subdomain_column = middleware.subdomain_column
+        # NewRelic wraps middleware in a proxy. I think the way we are using the
+        # middleware is a bit non-traditional, so we need to get the actual
+        # target of the proxy and call against that if we are passed in a proxy
+        target = middleware.respond_to?(:target) ? middleware.target : middleware
+        self.subdomain_klass = target.subdomain_klass
+        self.subdomain_column = target.subdomain_column
       else
         raise "Please enable `RestrictedSubdomain::Middleware` middleware before calling `use_restricted_subdomains`"
       end
