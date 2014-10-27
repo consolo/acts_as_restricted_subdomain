@@ -30,15 +30,16 @@ module RestrictedSubdomain
       
       self.class_eval <<-RUBY
         def self.current
-          Thread.current['current_subdomain']
+          Thread.current.thread_variable_get('current_subdomain')
         end
         
         def self.current=(other)
-          if other.is_a?(String) or other.is_a?(Symbol)
-            Thread.current['current_subdomain'] = self.send("find_by_#{options[:by]}", other)
+          obj = if other.is_a?(String) or other.is_a?(Symbol)
+           self.send("find_by_#{options[:by]}", other)
           else
-            Thread.current['current_subdomain'] = other
+            other
           end
+          Thread.current.thread_variable_set('current_subdomain', obj)
         end
 
         def self.each_subdomain(&blk)
