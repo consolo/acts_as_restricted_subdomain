@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name          = 'acts_as_restricted_subdomain'
-  s.version       = '3.0.0'
+  s.version       = '4.0.0'
   s.authors       = ['Andrew Coleman', 'Taylor Redden']
   s.email         = 'developers@consoloservices.com'
   s.summary       = 'Acts As Restricted Subdomain'
