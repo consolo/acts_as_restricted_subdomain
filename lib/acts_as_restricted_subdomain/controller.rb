@@ -5,28 +5,26 @@ module RestrictedSubdomain
     ##
     # == General
     #
-    # Enables subdomain restrictions by adding a before_filter and helper to
+    # Enables subdomain restrictions by adding middleware and helpers to
     # access the current subdomain through current_subdomain in the
     # controller.
     #
     # == Usage
     #
-    # Takes two arguments: :through and :by. :through should be a class of the
-    # model used to represent the subdomain (defaults to Agency) and the :by
-    # should be the column name of the field containing the subdomain
-    # (defaults to :code).
+    # 1. Add the RestrictedSubdomain::Middleware middleware to your app.
+    # See documentation for RestrictedSubdomain::Middleware.
     #
-    # Optional argument :global. This is a subdomain (or array) that should not
-    # perform a subdomain lookup. Instead, the current subdomain will be left blank
-    # and your application code will run "globally", with access to all agencies.
-    # E.g. a login portal.
+    # 2. Call use_restricted_subdomains in your ApplicationController.
     #
     # == Working Example
     #
     # For example, the usage of Agency and :code will work out thusly:
     #
+    # In config/application.rb add:
+    #   config.middleware.use RestrictedSubdomain::Middleware, through: 'Agency', by: :code
+    #
     # In app/controllers/application.rb (or any other!) add:
-    #   use_restricted_subdomains :through => 'Agency', :by => :code
+    #   use_restricted_subdomains
     #
     # 1. Request hits http://secksi.example.com/login
     # 2. Subdomain becomes 'secksi'
@@ -58,38 +56,27 @@ module RestrictedSubdomain
     # Then i discovered that account_location existed and did pretty much the
     # same thing without any meta-programming. Good times :)
     #
-    def use_restricted_subdomains(opts = {})
-      options = {
-        :through => 'Agency',
-        :by => :code,
-        :global => [],
-      }.merge(opts)
-      
-      respond_to?(:prepend_around_action) ? prepend_around_action(:within_request_subdomain) : prepend_around_filter(:within_request_subdomain)
-      
-      cattr_accessor :subdomain_klass, :subdomain_column, :global_subdomains
-      self.subdomain_klass = options[:through].respond_to?(:constantize) ? options[:through].constantize : options[:through]
-      self.subdomain_column = options[:by]
-      self.global_subdomains = options[:global].is_a?(Array) ? options[:global] : [options[:global]]
+    def use_restricted_subdomains
+      cattr_accessor :subdomain_klass, :subdomain_column
+
+      if middleware = Rails.configuration.middleware.detect { |m| m === RestrictedSubdomain::Middleware }.try(:build, nil)
+        # NewRelic wraps middleware in a proxy. I think the way we are using the
+        # middleware is a bit non-traditional, so we need to get the actual
+        # target of the proxy and call against that if we are passed in a proxy
+        target = middleware.respond_to?(:target) ? middleware.target : middleware
+        self.subdomain_klass = target.subdomain_klass
+        self.subdomain_column = target.subdomain_column
+      else
+        raise "Please enable `RestrictedSubdomain::Middleware` middleware before calling `use_restricted_subdomains`"
+      end
+
       helper_method :current_subdomain
       
+      include RestrictedSubdomain::Utils
       include InstanceMethods
     end
   
     module InstanceMethods
-      ##
-      # Sets the current subdomain model to the subdomain specified by #request_subdomain.
-      #
-      def within_request_subdomain
-        if self.global_subdomains.include?(request_subdomain) or (self.subdomain_klass.current = self.subdomain_klass.where({ self.subdomain_column => request_subdomain }).first)
-          yield if block_given?
-        else
-          raise RestrictedSubdomain::SubdomainNotFound
-        end
-      ensure
-        self.subdomain_klass.current = nil
-      end
-
       ##
       # Use as a before_filter to make sure there's a current_subdomain.
       # Useful if you're using global subdomains - e.g. a certain controller shouldn't be accessible from a global subdomain.
@@ -175,12 +162,10 @@ module RestrictedSubdomain
       # It can be useful to override this for testing with Capybara et all.
       #
       def request_subdomain
-        request.host.split(/\./).first
+        subdomain_from_host(request.host)
       end
     end
   end
-
-  SubdomainNotFound = Class.new(ActiveRecord::RecordNotFound)
 end
 
 ActionController::Base.send :extend, RestrictedSubdomain::Controller
