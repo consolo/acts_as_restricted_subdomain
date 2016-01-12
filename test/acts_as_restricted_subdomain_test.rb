@@ -1,8 +1,5 @@
-require 'rubygems'
-require 'test/unit'
 require 'active_record'
-require "active_support"
-require 'active_model'
+require 'minitest/autorun'
 
 $:.unshift "#{File.dirname(__FILE__)}/../"
 $:.unshift "#{File.dirname(__FILE__)}/../lib/"
@@ -18,12 +15,12 @@ def setup_db
   ActiveRecord::Schema.define(:version => 1) do
     create_table :agencies do |t|
       t.string :code
-      t.timestamps
+      t.timestamps null: false
     end
 
     create_table :things do |t|
       t.integer :agency_id
-      t.timestamps
+      t.timestamps null: false
     end
   end
 end
@@ -52,7 +49,7 @@ end
 #############
 # Actual Test
 #############
-class ActsAsRestrictedSubdomainBaseTest < ActiveSupport::TestCase
+class ActsAsRestrictedSubdomainBaseTest < Minitest::Test
   def assert_empty(collection)
     assert(collection.respond_to?(:empty?) && collection.empty?)
   end
