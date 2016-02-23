@@ -35,16 +35,16 @@ module RestrictedSubdomain
         
         def self.current=(other)
           obj = if other.is_a?(String) or other.is_a?(Symbol)
-           self.send("find_by_#{options[:by]}", other)
+            where(options[:by] => other).first
           else
             other
           end
           Thread.current.thread_variable_set('current_subdomain', obj)
         end
-
+        
         def self.each_subdomain(&blk)
           old_current = self.current
-          self.find(:all).each do |subdomain|
+          all.each do |subdomain|
             self.current = subdomain
             yield blk
           end
@@ -140,8 +140,7 @@ module RestrictedSubdomain
         # This *is* the restricted model and should always include the id in queries
         else
           belongs_to options[:through]
-          validates_presence_of options[:through]
-          before_create :set_restricted_subdomain_column
+          validate :subdomain_restrictions
           
           self.class_eval do
             default_scope { self.subdomain_klass.current ? where("#{self.subdomain_symbol}_id" => self.subdomain_klass.current.id ) : nil }
@@ -161,13 +160,10 @@ module RestrictedSubdomain
     
     module InstanceMethods
       private
-      def set_restricted_subdomain_column
+      def subdomain_restrictions
         self.send("#{subdomain_symbol}=", subdomain_klass.current)
         if self.send("#{subdomain_symbol}_id").nil?
           self.errors.add(subdomain_symbol, 'is missing')
-          false
-        else
-          true
         end
       end
     end
