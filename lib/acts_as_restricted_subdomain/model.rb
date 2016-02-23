@@ -81,25 +81,25 @@ module RestrictedSubdomain
     # This does not add any has_many associations in your subdomain class.
     # That is an exercise left to the user, sorry. Also beware of
     # validates_uniqueness_of. It should be scoped to the foreign key.
-    # 
+    #
     # If you pass an assocation symbol through the :delegate option, the subdomain
     # association will be delegated through that assocation instead of being linked
-    # directly. (It is assumed that the delegate is restricted to the subdomain.) 
+    # directly. (It is assumed that the delegate is restricted to the subdomain.)
     # The result is that model lookups will always be inner-joined to the delegate,
     # ensuring that the model is indirectly restricted.
     #
     # Example:
-    #   
+    #
     #   class Widget < ActiveRecord::Base
     #     acts_as_restricted_subdomain :through => :subdomain
     #   end
-    #   
+    #
     #   class Subdomain < ActiveRecord::Base
     #     use_for_restricted_subdomains :by => :name
     #   end
     #
     # Delegate Example: A User is "global" and is linked to one or more subdomains through
-    # UserCredential. Even though the User is technically global, it will only be visible to the 
+    # UserCredential. Even though the User is technically global, it will only be visible to the
     # associated subdomains.
     #
     # class User < ActiveRecord::Base
@@ -124,7 +124,7 @@ module RestrictedSubdomain
         # This *isn't* the restricted model, but it should always join against a delegate association
         if options[:delegate]
           cattr_accessor :subdomain_symbol_delegate, :subdomain_klass_delegate
-          self.subdomain_symbol_delegate = options[:delegate]
+          self.subdomain_symbol_delegate = options[:delegate].to_s
           self.subdomain_klass_delegate = options[:delegate].to_s.singularize.camelize.constantize
           
           default_scope do
@@ -140,10 +140,10 @@ module RestrictedSubdomain
         # This *is* the restricted model and should always include the id in queries
         else
           belongs_to options[:through]
-          validates_presence_of options[:through]        
+          validates_presence_of options[:through]
           before_create :set_restricted_subdomain_column
           
-          self.class_eval do 
+          self.class_eval do
             default_scope { self.subdomain_klass.current ? where("#{self.subdomain_symbol}_id" => self.subdomain_klass.current.id ) : nil }
           end
           
