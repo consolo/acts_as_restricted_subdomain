@@ -68,8 +68,8 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  actionpack (~> 4.2.0)
-  activerecord (~> 4.2.0)
+  actionpack (>= 3.1)
+  activerecord (>= 3.1)
   acts_as_restricted_subdomain!
   minitest
   rake
