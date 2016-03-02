@@ -35,7 +35,7 @@ module RestrictedSubdomain
         
         def self.current=(other)
           obj = if other.is_a?(String) or other.is_a?(Symbol)
-            where(options[:by] => other).first
+            where(#{options[:by]}: other).first
           else
             other
           end
