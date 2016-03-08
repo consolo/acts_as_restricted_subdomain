@@ -143,7 +143,7 @@ module RestrictedSubdomain
           validate :subdomain_restrictions
           
           self.class_eval do
-            default_scope { self.subdomain_klass.current ? where("#{self.subdomain_symbol}_id" => self.subdomain_klass.current.id ) : nil }
+            default_scope { self.subdomain_klass.current ? where("#{self.subdomain_symbol}_id" => self.subdomain_klass.current.id) : nil }
           end
           
           include InstanceMethods
@@ -161,7 +161,9 @@ module RestrictedSubdomain
     module InstanceMethods
       private
       def subdomain_restrictions
-        self.send("#{subdomain_symbol}=", subdomain_klass.current)
+        if !self.send("#{subdomain_symbol}_id?") and subdomain_klass.current
+          self.send("#{subdomain_symbol}_id=", subdomain_klass.current.id)
+        end
         if self.send("#{subdomain_symbol}_id").nil?
           self.errors.add(subdomain_symbol, 'is missing')
         end
