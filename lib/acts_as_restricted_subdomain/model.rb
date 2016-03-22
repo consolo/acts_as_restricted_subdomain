@@ -143,7 +143,7 @@ module RestrictedSubdomain
           validate :subdomain_restrictions
           
           self.class_eval do
-            default_scope { self.subdomain_klass.current ? where("#{self.subdomain_symbol}_id" => self.subdomain_klass.current.id) : nil }
+            default_scope { self.subdomain_klass.current ? where("#{self.subdomain_symbol}_id" => self.subdomain_klass.current.id) : where('1 = 1') }
           end
           
           include InstanceMethods
