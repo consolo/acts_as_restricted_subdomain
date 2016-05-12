@@ -46,7 +46,7 @@ module RestrictedSubdomain
       request = Rack::Request.new(env)
       request_subdomain = subdomain_from_host(request.host)
 
-      if self.global_subdomains.include?(request_subdomain) or (subdomain_klass.current = subdomain_klass.where({ self.subdomain_column => request_subdomain }).first)
+      if !request_subdomain.blank? and (self.global_subdomains.include?(request_subdomain) or (subdomain_klass.current = subdomain_klass.where({ self.subdomain_column => request_subdomain }).first))
         @app.call(env)
       else
         body = not_found_body % request_subdomain
