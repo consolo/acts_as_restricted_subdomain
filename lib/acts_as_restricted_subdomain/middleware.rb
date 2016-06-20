@@ -22,12 +22,14 @@ module RestrictedSubdomain
     DEFAULT_404 = '<h1>404 Subdomain Not Found</h1><p><em>%s</em> is not a valid subdomain; are you sure you spelled it correctly?'
 
     # Default options
-    DEFAULTS = {through: 'Agency', by: :code, global: [], not_found_body: DEFAULT_404}
+    DEFAULTS = {through: 'Agency', by: :code, header: nil, global: [], not_found_body: DEFAULT_404}
 
     # A reference to the model that holds the subdomains (either a class, class name, or proc returning the class
     attr_reader :subdomain_klass_option
     # The subdomain_klass column that maps to the request subdomain
     attr_reader :subdomain_column
+    # Optionally look for the subdomain in an HTTP header instead of in the domain name
+    attr_reader :subdomain_header
     # An array of global subdomains, i.e. subdomains that don't map to a subdomain_klass record
     attr_reader :global_subdomains
     # The HTML to render on a 404
@@ -38,13 +40,13 @@ module RestrictedSubdomain
       options = DEFAULTS.merge(_options)
       @subdomain_klass_option = options.fetch(:through)
       @subdomain_column = options.fetch(:by)
+      @subdomain_header = options[:header] ? "HTTP_#{options[:header].upcase.gsub('-', '_')}" : nil
       @global_subdomains = Array(options.fetch(:global))
       @not_found_body = options.fetch(:not_found_body)
     end
 
     def call(env)
-      request = Rack::Request.new(env)
-      request_subdomain = subdomain_from_host(request.host)
+      request_subdomain = subdomain_header ? env[subdomain_header] : subdomain_from_host(Rack::Request.new(env).host)
 
       if !request_subdomain.blank? and (self.global_subdomains.include?(request_subdomain) or (subdomain_klass.current = subdomain_klass.where({ self.subdomain_column => request_subdomain }).first))
         @app.call(env)
