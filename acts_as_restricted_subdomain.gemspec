@@ -10,5 +10,4 @@ Gem::Specification.new do |s|
   s.require_path  = 'lib'
     
   s.add_dependency "activerecord"
-  s.add_dependency "actionpack"
 end
