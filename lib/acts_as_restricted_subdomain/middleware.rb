@@ -12,17 +12,17 @@ module RestrictedSubdomain
   # and your application code will run "globally", with access to all agencies.
   # E.g. a login portal.
   #
-  # Optional argument :error_body. Override the default HTML 404 response for when
+  # Optional argument :error_body. Override the default HTML 400 response for when
   # a subdomain can't be found. You may use "%s" as a placeholder for the subdomain.
   #
   class Middleware
     include RestrictedSubdomain::Utils
 
-    # Default 404 html body
-    DEFAULT_404 = '<h1>404 Subdomain Not Found</h1><p><em>%s</em> is not a valid subdomain; are you sure you spelled it correctly?'
+    # Default 400 html body
+    DEFAULT_NOT_FOUND = '<h1>Subdomain Not Found</h1><p><em>%s</em> is not a valid subdomain; are you sure you spelled it correctly?'
 
     # Default options
-    DEFAULTS = {through: 'Agency', by: :code, header: nil, global: [], not_found_body: DEFAULT_404}
+    DEFAULTS = {through: 'Agency', by: :code, header: nil, global: [], not_found_body: DEFAULT_NOT_FOUND}
 
     # A reference to the model that holds the subdomains (either a class, class name, or proc returning the class
     attr_reader :subdomain_klass_option
@@ -32,7 +32,7 @@ module RestrictedSubdomain
     attr_reader :subdomain_header
     # An array of global subdomains, i.e. subdomains that don't map to a subdomain_klass record
     attr_reader :global_subdomains
-    # The HTML to render on a 404
+    # The HTML to render on a 400
     attr_reader :not_found_body
 
     def initialize(app, _options = {})
@@ -52,7 +52,7 @@ module RestrictedSubdomain
         @app.call(env)
       else
         body = not_found_body % request_subdomain
-        [404, {'Content-Type' => 'text/html', 'Content-Length' => body.size.to_s}, [body]]
+        [400, {'Content-Type' => 'text/html', 'Content-Length' => body.size.to_s}, [body]]
       end
     ensure
       self.subdomain_klass.current = nil
