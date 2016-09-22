@@ -12,17 +12,17 @@ module RestrictedSubdomain
   # and your application code will run "globally", with access to all agencies.
   # E.g. a login portal.
   #
-  # Optional argument :error_body. Override the default HTML 400 response for when
-  # a subdomain can't be found. You may use "%s" as a placeholder for the subdomain.
+  # Optional argument :not_found. Override the default subdomain not found response.
+  # It's a proc that accepts a subdomain string and returns a Rack response.
   #
   class Middleware
     include RestrictedSubdomain::Utils
 
-    # Default 400 html body
-    DEFAULT_NOT_FOUND = '<h1>Subdomain Not Found</h1><p><em>%s</em> is not a valid subdomain; are you sure you spelled it correctly?'
-
     # Default options
-    DEFAULTS = {through: 'Agency', by: :code, header: nil, global: [], not_found_body: DEFAULT_NOT_FOUND}
+    DEFAULTS = {through: 'Agency', by: :code, header: nil, global: [], not_found: ->(subdomain) {
+      body = "<h1>Subdomain Not Found</h1><p><em>#{subdomain}</em> is not a valid subdomain; are you sure you spelled it correctly?"
+      [400, {'Content-Type' => 'text/html', 'Content-Length' => body.size.to_s}, [body]]
+    }}
 
     # A reference to the model that holds the subdomains (either a class, class name, or proc returning the class
     attr_reader :subdomain_klass_option
@@ -32,8 +32,8 @@ module RestrictedSubdomain
     attr_reader :subdomain_header
     # An array of global subdomains, i.e. subdomains that don't map to a subdomain_klass record
     attr_reader :global_subdomains
-    # The HTML to render on a 400
-    attr_reader :not_found_body
+    # Proc that returns the Agency not found Rack response
+    attr_reader :not_found
 
     def initialize(app, _options = {})
       @app = app
@@ -42,7 +42,7 @@ module RestrictedSubdomain
       @subdomain_column = options.fetch(:by)
       @subdomain_header = options[:header] ? "HTTP_#{options[:header].upcase.gsub('-', '_')}" : nil
       @global_subdomains = Array(options.fetch(:global))
-      @not_found_body = options.fetch(:not_found_body)
+      @not_found = options.fetch(:not_found)
     end
 
     def call(env)
@@ -51,8 +51,7 @@ module RestrictedSubdomain
       if !request_subdomain.blank? and (self.global_subdomains.include?(request_subdomain) or (subdomain_klass.current = subdomain_klass.where({ self.subdomain_column => request_subdomain }).first))
         @app.call(env)
       else
-        body = not_found_body % request_subdomain
-        [400, {'Content-Type' => 'text/html', 'Content-Length' => body.size.to_s}, [body]]
+        not_found.(request_subdomain)
       end
     ensure
       self.subdomain_klass.current = nil
