@@ -1,4 +1,6 @@
 module RestrictedSubdomain
+  SAFE_UUID = /\A[a-f0-9-]+\Z/
+
   module Model
     ##
     # This method will mark a class as the subdomain model. It expects to
@@ -21,14 +23,22 @@ module RestrictedSubdomain
     #   end
     #
     def use_for_restricted_subdomains(opts = {})
+      cattr_accessor :aars_primary_key
+
       options = {
-        :by => :code
+        :by => :code,
+        :primary_key => :id
       }.merge(opts)
+      self.aars_primary_key = options[:primary_key]
       
       validates_presence_of options[:by]
       validates_uniqueness_of options[:by]
       
       self.class_eval <<-RUBY
+        def self.aars_primary_key_type
+          @aars_primary_key_type ||= columns_hash[self.aars_primary_key.to_s].type
+        end
+
         def self.current
           Thread.current.thread_variable_get('current_subdomain')
         end
@@ -131,23 +141,33 @@ module RestrictedSubdomain
             if self.subdomain_klass.current
               # Using straight sql so we can JOIN against two columns. Otherwise one must go into "WHERE", and Arel would mistakenly apply it to UPDATEs and DELETEs.
               delegate_foreign_key = reflections.with_indifferent_access[self.subdomain_symbol_delegate.to_s].foreign_key
-              join_args = {:delegate_table => self.subdomain_klass_delegate.table_name, :delegate_key => delegate_foreign_key, :table_name => self.table_name, :subdomain_key => "#{self.subdomain_symbol}_id", :subdomain_id => self.subdomain_klass.current.id.to_i}
+              subdomain_id = safe_sql_current_subdomain_primary_key
+              join_args = {:delegate_table => self.subdomain_klass_delegate.table_name, :delegate_key => delegate_foreign_key, :table_name => self.table_name, :subdomain_key => "#{self.subdomain_symbol}_id", :subdomain_id => subdomain_id}
               # Using "joins" makes records readonly, which we don't want
-              joins("INNER JOIN %{delegate_table} ON %{delegate_table}.%{delegate_key} = %{table_name}.id AND %{delegate_table}.%{subdomain_key} = %{subdomain_id}" % join_args).readonly(false)
+              joins("INNER JOIN %{delegate_table} ON %{delegate_table}.%{delegate_key} = %{table_name}.#{self.subdomain_klass.aars_primary_key} AND %{delegate_table}.%{subdomain_key} = %{subdomain_id}" % join_args).readonly(false)
             end
           end
         
         # This *is* the restricted model and should always include the id in queries
         else
-          belongs_to options[:through]
+          belongs_to options[:through], primary_key: self.subdomain_klass.aars_primary_key
           validate :subdomain_restrictions
           
           self.class_eval do
-            default_scope { self.subdomain_klass.current ? where("#{self.subdomain_symbol}_id" => self.subdomain_klass.current.id) : where('1 = 1') }
+            default_scope { self.subdomain_klass.current ? where("#{self.subdomain_symbol}_id" => self.subdomain_klass.current.send(self.subdomain_klass.aars_primary_key)) : where('1 = 1') }
           end
           
           include InstanceMethods
         end
+      end
+    end
+
+    def safe_sql_current_subdomain_primary_key
+      id = self.subdomain_klass.current.send(self.subdomain_klass.aars_primary_key)
+      case self.subdomain_klass.aars_primary_key_type
+      when :integer then id.to_i
+      when :uuid then id.to_s =~ RestrictedSubdomain::SAFE_UUID ? "'#{id}'" : "''"
+      else raise "Unsupported column type '#{self.subdomain_klass.aars_primary_key_type}'"
       end
     end
     
@@ -162,7 +182,7 @@ module RestrictedSubdomain
       private
       def subdomain_restrictions
         if !self.send("#{subdomain_symbol}_id?") and subdomain_klass.current
-          self.send("#{subdomain_symbol}_id=", subdomain_klass.current.id)
+          self.send("#{subdomain_symbol}_id=", subdomain_klass.current.send(subdomain_klass.aars_primary_key))
         end
         if self.send("#{subdomain_symbol}_id").nil?
           self.errors.add(subdomain_symbol, 'is missing')
