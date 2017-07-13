@@ -71,11 +71,11 @@ module RestrictedSubdomain
       end
 
       helper_method :current_subdomain
-      
+
       include RestrictedSubdomain::Utils
       include InstanceMethods
     end
-  
+
     module InstanceMethods
       ##
       # Use as a before_filter to make sure there's a current_subdomain.
@@ -100,7 +100,7 @@ module RestrictedSubdomain
       def current_subdomain
         self.subdomain_klass.current
       end
-    
+
       ##
       # Returns a symbol of the current subdomain. So, something like
       # http://secksi.example.com returns :secksi
@@ -112,16 +112,16 @@ module RestrictedSubdomain
           nil
         end
       end
-    
+
       ##
       # Overwrite the default accessor that will force all session access to
-      # a subhash keyed on the restricted subdomain symbol. If the current 
+      # a subhash keyed on the restricted subdomain symbol. If the current
       # current subdomain is not set, it gracefully degrades to the normal session.
       #
       def session
         if current_subdomain
           request.session[current_subdomain_symbol] ||= {}
-          request.session[current_subdomain_symbol] 
+          request.session[current_subdomain_symbol]
         else
           request.session
         end
