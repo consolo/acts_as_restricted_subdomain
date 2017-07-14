@@ -46,7 +46,8 @@ module RestrictedSubdomain
     end
 
     def call(env)
-      request_subdomain = subdomain_header ? env[subdomain_header] : subdomain_from_host(Rack::Request.new(env).host)
+      request_subdomain = subdomain_header ? env[subdomain_header] : nil
+      request_subdomain ||= subdomain_from_host(Rack::Request.new(env).host)
 
       if !request_subdomain.blank? and (self.global_subdomains.include?(request_subdomain) or (subdomain_klass.current = subdomain_klass.where({ self.subdomain_column => request_subdomain }).first))
         @app.call(env)
