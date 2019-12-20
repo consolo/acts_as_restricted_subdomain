@@ -1,8 +1,7 @@
 PATH
   remote: .
   specs:
-    acts_as_restricted_subdomain (4.2.0)
-      actionpack
+    acts_as_restricted_subdomain (4.3.0)
       activerecord
 
 GEM
@@ -45,7 +44,7 @@ GEM
     minitest (5.8.3)
     nokogiri (1.6.7.1)
       mini_portile2 (~> 2.0.0.rc2)
-    rack (1.6.4)
+    rack (1.6.12)
     rack-test (0.6.3)
       rack (>= 1.0)
     rails-deprecated_sanitizer (1.0.3)
