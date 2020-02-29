@@ -1,8 +1,7 @@
 PATH
   remote: .
   specs:
-    acts_as_restricted_subdomain (4.2.0)
-      actionpack
+    acts_as_restricted_subdomain (4.3.0)
       activerecord
 
 GEM
@@ -56,7 +55,7 @@ GEM
       rails-deprecated_sanitizer (>= 1.0.1)
     rails-html-sanitizer (1.0.2)
       loofah (~> 2.0)
-    rake (10.3.2)
+    rake (12.3.3)
     sqlite3 (1.3.9)
     sqlite3-ruby (1.3.3)
       sqlite3 (>= 1.3.3)
